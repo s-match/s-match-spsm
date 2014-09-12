@@ -22,29 +22,29 @@ public class TreeEditDistance {
     /**
      * Default weight of delete operation
      */
-    public static double DEFAULT_WEIGHT_DELETE = 1d;
+    public static final double DEFAULT_WEIGHT_DELETE = 1d;
 
     /**
      * Default weight of insert operation
      */
-    public static double DEFAULT_WEIGHT_INSERT = 1d;
+    public static final double DEFAULT_WEIGHT_INSERT = 1d;
 
     /**
      * Default weight of substitute operation for non-equal objects. Equality is
      * determined by comparator.
      */
-    public static double DEFAULT_WEIGHT_SUBSTITUTE = 0.5d;
+    public static final double DEFAULT_WEIGHT_SUBSTITUTE = 0.5d;
 
     /**
      * Default weight of substitute operation for equal objects. Equality is
      * determined by comparator.
      */
-    public static double DEFAULT_WEIGHT_SUBSTITUTE_EQUAL = 0d;
+    public static final double DEFAULT_WEIGHT_SUBSTITUTE_EQUAL = 0d;
 
     /**
      * Default path length limit is infinity
      */
-    public static double DEFAULT_PATH_LENGTH_LIMIT = Double.POSITIVE_INFINITY;
+    public static final double DEFAULT_PATH_LENGTH_LIMIT = Double.POSITIVE_INFINITY;
 
     /**
      * This will contain the used tree comparator
@@ -64,7 +64,7 @@ public class TreeEditDistance {
     /**
      * This stores the depth for each element of tree1
      */
-    private HashMap<INode, Integer> depth1 = new HashMap<INode, Integer>();
+    private final HashMap<INode, Integer> depth1 = new HashMap<>();
 
     /**
      * Contains the second tree
@@ -79,7 +79,7 @@ public class TreeEditDistance {
     /**
      * This stores the depth for each element of tree2
      */
-    private HashMap<INode, Integer> depth2 = new HashMap<INode, Integer>();
+    private final HashMap<INode, Integer> depth2 = new HashMap<>();
 
     /**
      * Default path length limit is infinity.
@@ -128,7 +128,7 @@ public class TreeEditDistance {
      */
     private DijkstraShortestPath shortestPath;
 
-    private IDistanceConversion conversion;
+    private final IDistanceConversion conversion;
 
     /**
      * Constructor.
@@ -284,8 +284,8 @@ public class TreeEditDistance {
         int list2size = list2.size();
 
         // this stores the order number for each Node
-        HashMap<INode, Integer> orderNum1 = new HashMap<INode, Integer>();
-        HashMap<INode, Integer> orderNum2 = new HashMap<INode, Integer>();
+        HashMap<INode, Integer> orderNum1 = new HashMap<>();
+        HashMap<INode, Integer> orderNum2 = new HashMap<>();
 
         // calculate preorder numeration and depth information for each node
         preorderTreeDepth(tree1, orderNum1, depth1);
@@ -398,7 +398,7 @@ public class TreeEditDistance {
 
         int num = 1;
 
-        Deque<INode> stack = new ArrayDeque<INode>();
+        Deque<INode> stack = new ArrayDeque<>();
         stack.push(root);
         while (!stack.isEmpty()) {
             INode v = stack.pop();
@@ -660,8 +660,8 @@ public class TreeEditDistance {
      * @return the converted list, empty if no elements in input
      */
     private static List<INode> preorder(INode root) {
-        ArrayList<INode> result = new ArrayList<INode>();
-        Deque<INode> stack = new ArrayDeque<INode>();
+        ArrayList<INode> result = new ArrayList<>();
+        Deque<INode> stack = new ArrayDeque<>();
         stack.push(root);
         while (!stack.isEmpty()) {
             INode c = stack.pop();

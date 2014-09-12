@@ -6,9 +6,9 @@ package it.unitn.disi.smatch.matchers.structure.tree.spsm.ted.data.impl;
  */
 public class GenericTuple<E> {
 
-    private E left;
+    private final E left;
 
-    private E right;
+    private final E right;
 
     /**
      * Constructor.

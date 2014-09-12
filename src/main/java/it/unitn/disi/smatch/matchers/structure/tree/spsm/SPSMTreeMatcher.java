@@ -1,21 +1,19 @@
 package it.unitn.disi.smatch.matchers.structure.tree.spsm;
 
-import it.unitn.disi.common.components.ConfigurableException;
-import it.unitn.disi.common.components.ConfigurationKeyMissingException;
 import it.unitn.disi.smatch.data.ling.IAtomicConceptOfLabel;
 import it.unitn.disi.smatch.data.mappings.IContextMapping;
+import it.unitn.disi.smatch.data.mappings.IMappingFactory;
 import it.unitn.disi.smatch.data.trees.IContext;
 import it.unitn.disi.smatch.data.trees.INode;
 import it.unitn.disi.smatch.filters.IMappingFilter;
 import it.unitn.disi.smatch.filters.MappingFilterException;
+import it.unitn.disi.smatch.matchers.structure.node.INodeMatcher;
 import it.unitn.disi.smatch.matchers.structure.tree.TreeMatcherException;
 import it.unitn.disi.smatch.matchers.structure.tree.def.DefaultTreeMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Properties;
-
 
 /**
  * Used the DefaultTreeMatcher for computing the default set of mapping elements and
@@ -43,23 +41,11 @@ public class SPSMTreeMatcher extends DefaultTreeMatcher {
 
     private final static Logger log = LoggerFactory.getLogger(SPSMTreeMatcher.class.getName());
 
-    private static final String SPSM_FILTER_KEY = "spsmFilter";
-    protected IMappingFilter spsmFilter = null;
+    protected final IMappingFilter spsmFilter;
 
-    @Override
-    public boolean setProperties(Properties newProperties) throws ConfigurableException {
-        Properties oldProperties = new Properties();
-        oldProperties.putAll(properties);
-
-        boolean result = super.setProperties(newProperties);
-        if (result) {
-            if (newProperties.containsKey(SPSM_FILTER_KEY)) {
-                spsmFilter = (IMappingFilter) configureComponent(spsmFilter, oldProperties, newProperties, "spsm filter", SPSM_FILTER_KEY, IMappingFilter.class);
-            } else {
-                throw new ConfigurationKeyMissingException(SPSM_FILTER_KEY);
-            }
-        }
-        return result;
+    public SPSMTreeMatcher(INodeMatcher nodeMatcher, IMappingFactory mappingFactory, IMappingFilter spsmFilter) {
+        super(nodeMatcher, mappingFactory);
+        this.spsmFilter = spsmFilter;
     }
 
     @Override
