@@ -1,5 +1,6 @@
 package it.unitn.disi.smatch.filters;
 
+import it.unitn.disi.smatch.async.AsyncTask;
 import it.unitn.disi.smatch.data.mappings.IContextMapping;
 import it.unitn.disi.smatch.data.mappings.IMappingElement;
 import it.unitn.disi.smatch.data.mappings.IMappingFactory;
@@ -39,7 +40,7 @@ import java.util.List;
  *
  * @author Juan Pane pane@disi.unitn.it
  */
-public class SPSMMappingFilter extends BaseFilter implements IMappingFilter {
+public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAsyncMappingFilter {
 
     private static final Logger log = LoggerFactory.getLogger(SPSMMappingFilter.class);
 
@@ -47,11 +48,15 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter {
         super(mappingFactory);
     }
 
+    public SPSMMappingFilter(IMappingFactory mappingFactory, IContextMapping<INode> mapping) {
+        super(mappingFactory, mapping);
+    }
+
     /**
      * Sorts the siblings in the source and target tree defined in the constructor using
      * the given mapping.
      */
-    public IContextMapping<INode> filter(IContextMapping<INode> mapping) throws MappingFilterException {
+    protected IContextMapping<INode> process(IContextMapping<INode> mapping) throws MappingFilterException {
         //add the first mapping element for the root to the mappings result
         if (0 < mapping.size()) {
 
@@ -87,6 +92,10 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter {
         return mapping;
     }
 
+    @Override
+    public AsyncTask<IContextMapping<INode>, IMappingElement<INode>> asyncFilter(IContextMapping<INode> mapping) {
+        return new SPSMMappingFilter(mappingFactory, mapping);
+    }
 
     /**
      * Computes the similarity score according to the definition provided in
