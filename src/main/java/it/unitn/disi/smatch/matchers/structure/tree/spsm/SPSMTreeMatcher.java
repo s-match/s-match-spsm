@@ -77,8 +77,8 @@ public class SPSMTreeMatcher extends DefaultTreeMatcher {
      */
     private String getFNSignatureFromIContext(INode node) {
 
-        String ret = node.getNodeData().getName();
-        List<INode> children = node.getChildrenList();
+        String ret = node.nodeData().getName();
+        List<INode> children = node.getChildren();
         if (children != null && children.size() > 0) {
             ret += "(";
             for (INode aChildren : children) {
