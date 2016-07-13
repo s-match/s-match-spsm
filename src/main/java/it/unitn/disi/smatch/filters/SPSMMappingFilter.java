@@ -5,6 +5,7 @@ import it.unitn.disi.smatch.data.mappings.IContextMapping;
 import it.unitn.disi.smatch.data.mappings.IMappingElement;
 import it.unitn.disi.smatch.data.mappings.IMappingFactory;
 import it.unitn.disi.smatch.data.mappings.MappingElement;
+import it.unitn.disi.smatch.data.trees.Context;
 import it.unitn.disi.smatch.data.trees.IContext;
 import it.unitn.disi.smatch.data.trees.INode;
 import it.unitn.disi.smatch.matchers.structure.tree.spsm.ted.TreeEditDistance;
@@ -14,8 +15,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -63,31 +66,56 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
 
             IContext sourceContext = mapping.getSourceContext();
             IContext targetContext = mapping.getTargetContext();
+            IContext reorderedSourceContext = new Context();
+            IContext reorderedTargetContext = new Context();
+            Map<INode,INode> copyMap = new HashMap<>();
+            copyMap.putAll(copyTree(sourceContext.getRoot(), reorderedSourceContext.createRoot()));
+            copyMap.putAll(copyTree(targetContext.getRoot(), reorderedTargetContext.createRoot()));
 
             //used for reordering of siblings
             List<Integer> sourceIndex = new ArrayList<>();
             List<Integer> targetIndex = new ArrayList<>();
 
-            //the mapping to be returned by the filter
-            IContextMapping<INode> spsmMapping = mappingFactory.getContextMappingInstance(sourceContext, targetContext);
+            // the ordered SPSM mapping produced by the filter
+            IContextMapping<INode> spsmMapping = 
+                mappingFactory.getContextMappingInstance(sourceContext, targetContext);
+            // the unordered SPSM mapping produced and returned by the filter
+            IContextMapping<INode> unorderedSpsmMapping =
+                mappingFactory.getContextMappingInstance(reorderedSourceContext, reorderedTargetContext);
+            // the mapping corresponding to the reordered source and target
+            IContextMapping<INode> unorderedMapping = 
+                mappingFactory.getContextMappingInstance(reorderedSourceContext, reorderedTargetContext);
 
-            spsmMapping.setSimilarity(computeSimilarity(mapping));
-            log.info("Similarity: " + spsmMapping.getSimilarity());
+            for (IMappingElement me : mapping) {
+                // copy the corresponding mapping elements into unorderedMapping
+                unorderedMapping.add(new MappingElement<>(copyMap.get((INode)(me.getSource())), 
+                                                              copyMap.get((INode)(me.getTarget())),
+                                                              me.getRelation()));
+            }
 
             if (isRelated(sourceContext.getRoot(), targetContext.getRoot(), IMappingElement.EQUIVALENCE, mapping) ||
                     isRelated(sourceContext.getRoot(), targetContext.getRoot(), IMappingElement.LESS_GENERAL, mapping) ||
                     isRelated(sourceContext.getRoot(), targetContext.getRoot(), IMappingElement.MORE_GENERAL, mapping)) {
 
-                setStrongestMapping(sourceContext.getRoot(), targetContext.getRoot(), mapping, spsmMapping);
-                filterMappingsOfChildren(sourceContext.getRoot(), targetContext.getRoot(), IMappingElement.EQUIVALENCE,
-                        sourceIndex, targetIndex, mapping, spsmMapping);
-                filterMappingsOfChildren(sourceContext.getRoot(), targetContext.getRoot(), IMappingElement.MORE_GENERAL,
-                        sourceIndex, targetIndex, mapping, spsmMapping);
-                filterMappingsOfChildren(sourceContext.getRoot(), targetContext.getRoot(), IMappingElement.LESS_GENERAL,
-                        sourceIndex, targetIndex, mapping, spsmMapping);
+                setStrongestMapping(sourceContext.getRoot(), targetContext.getRoot(), 
+                        mapping, spsmMapping);
+                setStrongestMapping(reorderedSourceContext.getRoot(), reorderedTargetContext.getRoot(), 
+                        unorderedMapping, unorderedSpsmMapping);
+
+                filterMappingsOfChildren(sourceContext.getRoot(), targetContext.getRoot(), 
+                        reorderedSourceContext.getRoot(),
+                        reorderedTargetContext.getRoot(),/*, IMappingElement.EQUIVALENCE*/
+                        sourceIndex, targetIndex, 
+                        mapping, unorderedMapping,
+                        spsmMapping, unorderedSpsmMapping);
             }
 
-            return spsmMapping;
+            unorderedMapping.setSimilarity(computeSimilarity(unorderedSpsmMapping));
+            double orderedSimilarity = computeSimilarity(spsmMapping);
+            log.info("Similarity: " + unorderedMapping.getSimilarity());
+            log.info("Ordered similarity: " + orderedSimilarity);
+
+            return unorderedSpsmMapping;
         }
 
         return mapping;
@@ -125,31 +153,67 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      *
      * @param sourceParent     Source node.
      * @param targetParent     Target node.
-     * @param semanticRelation the relation to use for comparison.
+     * @param rscParent        Node of the reordered source context.
+     * @param rtcParent        Node of the reordered target context.
      * @param sourceIndex      list used for reordering of siblings
      * @param targetIndex      list used for reordering of siblings
+     * @param mapping          the original SMATCH mappings
+     *                         to the reordered trees
+     * @param unorderedMapping a copy of the original mappings used with
+     *                         the reordered trees
+     * @param spsmMapping      SPSM-filtered ordered mappings are collected here
+     * @param unorderedSpsmMapping  SPSM-filtered unordered mappings are collected here
      */
-    protected void filterMappingsOfChildren(INode sourceParent, INode targetParent, char semanticRelation,
+    protected void filterMappingsOfChildren(INode sourceParent, INode targetParent, 
+                                          INode rscParent, INode rtcParent,
                                           List<Integer> sourceIndex, List<Integer> targetIndex,
                                           IContextMapping<INode> mapping,
-                                          IContextMapping<INode> spsmMapping) {
-        List<INode> source = new ArrayList<>(sourceParent.getChildren());
-        List<INode> target = new ArrayList<>(targetParent.getChildren());
-
+                                          IContextMapping<INode> unorderedMapping,
+                                          IContextMapping<INode> spsmMapping,
+                                          IContextMapping<INode> unorderedSpsmMapping) {
+        List<INode> sourceChildren = new ArrayList<>(sourceParent.getChildren());
+        List<INode> targetChildren = new ArrayList<>(targetParent.getChildren());
+        
         sourceIndex.add(sourceParent.ancestorCount(), 0);
         targetIndex.add(targetParent.ancestorCount(), 0);
 
-        if (source.size() >= 1 && target.size() >= 1) {
+        if (sourceChildren.size() >= 1 && targetChildren.size() >= 1) {
             //sorts the siblings first with the strongest relation, and then with the others
-            filterMappingsOfSiblingsByRelation(source, target, semanticRelation,
-                    sourceIndex, targetIndex,
-                    mapping, spsmMapping);
+            filterMappingsOfSiblings(sourceChildren, targetChildren,
+                    rscParent.getModifiableChildren(), rtcParent.getModifiableChildren(),
+                    sourceIndex, targetIndex, mapping, unorderedMapping, 
+                    spsmMapping, unorderedSpsmMapping);
         }
 
         sourceIndex.remove(sourceParent.ancestorCount());
         targetIndex.remove(targetParent.ancestorCount());
     }
 
+    protected Map<INode,INode> copyTree(INode from, INode to) {
+        // Copy all source and all target children into the reordered source (rsc)
+        // and reordered target (rtc) contexts (trees), respectively
+        Map<INode,INode> copyMap = new HashMap<>();
+        copyNode(from, to);
+        copyMap.put(from, to);
+        
+        for (INode fromChild : from.getChildren()) {
+            INode toChild = to.createChild();
+            copyMap.putAll(copyTree(fromChild, toChild));
+        }
+        return copyMap;
+    }
+    
+    protected void copyNode(INode from, INode to) {
+        to.nodeData().setName(from.nodeData().getName());
+        to.nodeData().setConcepts(from.nodeData().getConcepts());
+        to.nodeData().setId(from.nodeData().getId());
+        to.nodeData().setIsPreprocessed(from.nodeData().getIsPreprocessed());
+        to.nodeData().setLabelFormula(from.nodeData().getLabelFormula());
+        to.nodeData().setNodeFormula(from.nodeData().getNodeFormula());
+        to.nodeData().setProvenance(from.nodeData().getProvenance());
+        to.nodeData().setSource(from.nodeData().getSource());
+    }
+    
 
     /**
      * Filters the mappings of two siblings node list for which the parents are also supposed to
@@ -159,62 +223,113 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      *
      * @param source           Source list of siblings.
      * @param target           Target list of siblings.
-     * @param semanticRelation a char representing the semantic relation as defined in IMappingElement.
+     * @param rscList          List of source siblings to be reordered.
+     * @param rtcList          List of target siblings to be reordered.
      * @param sourceIndex      list used for reordering of siblings
      * @param targetIndex      list used for reordering of siblings
      * @param mapping          original mapping
+     * @param unorderedMapping        a copy of the original mapping corresponding
+     *                         to the reordered trees
+     * @param spsmMapping      SPSM-filtered ordered mappings are collected here
+     * @param unorderedSpsmMapping  SPSM-filtered unordered mappings are collected here
      */
-    protected void filterMappingsOfSiblingsByRelation(List<INode> source, List<INode> target, char semanticRelation,
-                                                    List<Integer> sourceIndex, List<Integer> targetIndex,
-                                                    IContextMapping<INode> mapping,
-                                                    IContextMapping<INode> spsmMapping) {
+    protected void filterMappingsOfSiblings(List<INode> source, List<INode> target, 
+                                            List<INode> rscList,
+                                            List<INode> rtcList,
+                                            List<Integer> sourceIndex, List<Integer> targetIndex,
+                                            IContextMapping<INode> mapping,
+                                            IContextMapping<INode> unorderedMapping,
+                                            IContextMapping<INode> spsmMapping,
+                                            IContextMapping<INode> unorderedSpsmMapping) {
+        
+        char relationList[] = {IMappingElement.EQUIVALENCE, IMappingElement.MORE_GENERAL,
+                               IMappingElement.LESS_GENERAL};
+        
         int sourceDepth = (source.get(0).ancestorCount() - 1);
         int targetDepth = (target.get(0).ancestorCount() - 1);
 
         int sourceSize = source.size();
         int targetSize = target.size();
 
-        while (sourceIndex.get(sourceDepth) < sourceSize && targetIndex.get(targetDepth) < targetSize) {
-            if (isRelated(source.get(sourceIndex.get(sourceDepth)),
-                    target.get(targetIndex.get(targetDepth)),
-                    semanticRelation, mapping)) {
-
-                //sort the children of the matched node
-                setStrongestMapping(source.get(sourceIndex.get(sourceDepth)),
+        for (char semanticRelation : relationList) {
+            while (sourceIndex.get(sourceDepth) < sourceSize && targetIndex.get(targetDepth) < targetSize) {
+                if (isRelated(source.get(sourceIndex.get(sourceDepth)),
                         target.get(targetIndex.get(targetDepth)),
-                        mapping,
-                        spsmMapping);
-                filterMappingsOfChildren(source.get(sourceIndex.get(sourceDepth)),
-                        target.get(targetIndex.get(targetDepth)),
-                        semanticRelation, sourceIndex, targetIndex, mapping, spsmMapping);
+                        semanticRelation, mapping)) {
 
-                //increment the index
-                inc(sourceIndex, sourceDepth);
-                inc(targetIndex, targetDepth);
-            } else {
-                //look for the next related node in the target
-                int relatedIndex = getRelatedIndex(source, target, semanticRelation,
-                        sourceIndex, targetIndex, mapping, spsmMapping);
-                if (relatedIndex > sourceIndex.get(sourceDepth)) {
-                    //there is a related node, but further between the siblings
-                    //they should be swapped
-                    swapINodes(target, targetIndex.get(targetDepth), relatedIndex);
-
-                    //filter the mappings of the children of the matched node
-                    filterMappingsOfChildren(source.get(sourceIndex.get(sourceDepth)),
+                    setStrongestMapping(source.get(sourceIndex.get(sourceDepth)),
                             target.get(targetIndex.get(targetDepth)),
-                            semanticRelation, sourceIndex, targetIndex, mapping, spsmMapping);
+                            mapping, spsmMapping);
+                    
+                    setStrongestMapping(rscList.get(sourceIndex.get(sourceDepth)),
+                            rtcList.get(targetIndex.get(targetDepth)),
+                            unorderedMapping, unorderedSpsmMapping);
+                    
+                    // Sort the children of the matched node
+                    // TODO: here the assumption is made that mappings only need to be
+                    // verified at the same depth. This is a drastic simplification
+                    // that speeds up the filtering and the subsequent TED algorithm
+                    // but it ignores a lot of mappings.
+                    filterMappingsOfChildren(source.get(sourceIndex.get(sourceDepth)),
+                            target.get(targetIndex.get(targetDepth)), 
+                            rscList.get(sourceIndex.get(sourceDepth)),
+                            rtcList.get(targetIndex.get(targetDepth)),
+                            sourceIndex, targetIndex, 
+                            mapping, unorderedMapping,
+                            spsmMapping, unorderedSpsmMapping);
 
                     //increment the index
                     inc(sourceIndex, sourceDepth);
                     inc(targetIndex, targetDepth);
-
                 } else {
-                    //there is not related item among the remaining siblings
-                    //swap this element of source with the last, and decrement the sourceSize
-                    swapINodes(source, sourceIndex.get(sourceDepth), (sourceSize - 1));
+                    //look for the next related node in the target
+                    int relatedIndex = getRelatedIndex(source, target, 
+                            rscList, rtcList, semanticRelation,
+                            sourceIndex, targetIndex, mapping, unorderedMapping, 
+                            spsmMapping, unorderedSpsmMapping);
+                    if (relatedIndex > sourceIndex.get(sourceDepth)) {
+                        //there is a related node, but further between the siblings
+                        //they should be swapped
+                        swapINodes(target, targetIndex.get(targetDepth), relatedIndex);
+                        swapINodes(rtcList, targetIndex.get(targetDepth), relatedIndex);
 
-                    sourceSize--;
+                        //filter the mappings of the children of the matched node
+                        // TODO: the same assumption is made here as above
+                        filterMappingsOfChildren(source.get(sourceIndex.get(sourceDepth)),
+                                target.get(targetIndex.get(targetDepth)),
+                                rscList.get(targetIndex.get(targetDepth)),
+                                rtcList.get(targetIndex.get(targetDepth)),
+                                sourceIndex, targetIndex, 
+                                mapping, unorderedMapping,
+                                spsmMapping, unorderedSpsmMapping);
+
+                        //increment the index
+                        inc(sourceIndex, sourceDepth);
+                        inc(targetIndex, targetDepth);
+
+                    } else {
+                        //there is no related item among the remaining siblings
+                        //swap this element of source with the last, and decrement the sourceSize
+                        swapINodes(source, sourceIndex.get(sourceDepth), (sourceSize - 1));
+                        swapINodes(rscList, sourceIndex.get(sourceDepth), (sourceSize - 1));
+                        // TODO: here the choice is made to filter out any mappings
+                        // of the children of this node. This means that this SPSM
+                        // implementation adds a constraint on parents needing
+                        // to be mapped in order to consider their children. So if
+                        // the source tree is:
+                        // A
+                        //    B
+                        //       C
+                        // and the target tree is
+                        // B
+                        //    A
+                        //       C
+                        // then, even though SMATCH returns equivalence for the
+                        // second and third levels, SPSM eliminates these matches
+                        // because A and B do not match on the root level.
+                        // It should be reviewed whether this behaviour is intended.
+                        sourceSize--;
+                    }
                 }
             }
         }
@@ -239,29 +354,44 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * Looks for the related index for the source list at the position sourceIndex
      * in the target list beginning at the targetIndex position for the defined relation.
      *
-     * @param source      source list of siblings.
-     * @param target      target list of siblings.
+     * @param source      source list of siblings
+     * @param target      target list of siblings
+     * @param rscList     source list of reordered siblings
+     * @param rtcList     target list of reordered siblings
      * @param relation    relation
      * @param sourceIndex list used for reordering of siblings
      * @param targetIndex list used for reordering of siblings
+     * @param mapping          original mapping
+     * @param unorderedMapping        a copy of the original mapping corresponding
+     *                         to the reordered trees
+     * @param spsmMapping      SPSM-filtered ordered mappings are collected here
+     * @param unorderedSpsmMapping  SPSM-filtered unordered mappings are collected here
      * @return the index of the related element in target, or -1 if there is no relate element.
      */
-    protected int getRelatedIndex(List<INode> source, List<INode> target, char relation,
+    protected int getRelatedIndex(List<INode> source, List<INode> target, 
+                                List<INode> rscList, List<INode> rtcList,
+                                char relation,
                                 List<Integer> sourceIndex, List<Integer> targetIndex,
                                 IContextMapping<INode> mapping,
-                                IContextMapping<INode> spsmMapping) {
+                                IContextMapping<INode> unorderedMapping,
+                                IContextMapping<INode> spsmMapping,
+                                IContextMapping<INode> unorderedSpsmMapping) {
         int srcIndex = sourceIndex.get(source.get(0).ancestorCount() - 1);
         int tgtIndex = targetIndex.get(target.get(0).ancestorCount() - 1);
 
         int returnIndex = -1;
 
         INode sourceNode = source.get(srcIndex);
+        INode rsNode = rscList.get(srcIndex);
 
         //find the first one who is related in the same level
         for (int i = tgtIndex + 1; i < target.size(); i++) {
             INode targetNode = target.get(i);
+            INode rtNode = rtcList.get(i);
             if (isRelated(sourceNode, targetNode, relation, mapping)) {
                 setStrongestMapping(sourceNode, targetNode, mapping, spsmMapping);
+                setStrongestMapping(rsNode, rtNode, unorderedMapping, unorderedSpsmMapping);
+                
                 return i;
             }
         }
@@ -269,6 +399,8 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
         //there was no correspondence between siblings in source and target lists
         //try to clean the mapping elements
         computeStrongestMappingForSource(source.get(srcIndex), mapping, spsmMapping);
+        computeStrongestMappingForSource(rscList.get(srcIndex), unorderedMapping, 
+                unorderedSpsmMapping);
 
         return returnIndex;
     }
@@ -315,7 +447,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
             for (Iterator<INode> targetNodes = mapping.getTargetContext().nodeIterator(); targetNodes.hasNext(); ) {
                 INode node = targetNodes.next();
                 //if its not the target of the mapping elements and the relation is weaker
-                if (source != node && mapping.getRelation(source, node) != IMappingElement.IDK
+                if (target != node && mapping.getRelation(source, node) != IMappingElement.IDK
                         && isPrecedent(mapping.getRelation(source, target), mapping.getRelation(source, node))) {
                     mapping.setRelation(source, node, IMappingElement.IDK);
                 }
@@ -324,7 +456,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
             //deletes all the less precedent relations for the same target node
             for (Iterator<INode> sourceNodes = mapping.getSourceContext().nodeIterator(); sourceNodes.hasNext(); ) {
                 INode node = sourceNodes.next();
-                if (target != node) {
+                if (source != node) {
                     mapping.setRelation(node, target, IMappingElement.IDK);
                 }
             }
