@@ -180,7 +180,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
         if (sourceChildren.size() >= 1 && targetChildren.size() >= 1) {
             //sorts the siblings first with the strongest relation, and then with the others
             filterMappingsOfSiblings(sourceChildren, targetChildren,
-                    rscParent.getModifiableChildren(), rtcParent.getModifiableChildren(),
+                    rscParent.getChildren(), rtcParent.getChildren(),
                     sourceIndex, targetIndex, mapping, unorderedMapping, 
                     spsmMapping, unorderedSpsmMapping);
         }
@@ -291,7 +291,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                         //there is a related node, but further between the siblings
                         //they should be swapped
                         swapINodes(target, targetIndex.get(targetDepth), relatedIndex);
-                        swapINodes(rtcList, targetIndex.get(targetDepth), relatedIndex);
+                        swapUnmodifiableINodes(rtcList, targetIndex.get(targetDepth), relatedIndex);
 
                         //filter the mappings of the children of the matched node
                         // TODO: the same assumption is made here as above
@@ -311,7 +311,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                         //there is no related item among the remaining siblings
                         //swap this element of source with the last, and decrement the sourceSize
                         swapINodes(source, sourceIndex.get(sourceDepth), (sourceSize - 1));
-                        swapINodes(rscList, sourceIndex.get(sourceDepth), (sourceSize - 1));
+                        swapUnmodifiableINodes(rscList, sourceIndex.get(sourceDepth), (sourceSize - 1));
                         // TODO: here the choice is made to filter out any mappings
                         // of the children of this node. This means that this SPSM
                         // implementation adds a constraint on parents needing
@@ -350,6 +350,38 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
     }
 
 
+    /**
+     * Swaps the INodes in listOfNodes in the positions source and target,
+     * where listOfNodes is an unmodifiableList.
+     *
+     * @param listOfNodes List of INodes of which the elements should be swapped.
+     * @param source      index of the source child to be swapped.
+     * @param target      index of the target child to be swapped.
+     *
+     * @since 2.0.0
+     */
+    protected void swapUnmodifiableINodes(List<INode> listOfNodes, int source, int target) {
+
+        int lowerIndex;
+        int higherIndex;
+        
+        INode parentNode = listOfNodes.get(0).getParent();
+        if (source < target) {
+            lowerIndex = source;
+            higherIndex = target;
+        } else {
+            lowerIndex = target;
+            higherIndex = source;
+        }
+        INode lowerNode = parentNode.getChildAt(lowerIndex);
+        INode higherNode = parentNode.getChildAt(higherIndex);
+        parentNode.removeChild(higherNode);
+        parentNode.removeChild(lowerNode);
+        parentNode.addChild(lowerIndex, higherNode);
+        parentNode.addChild(higherIndex, lowerNode);
+    }
+    
+    
     /**
      * Looks for the related index for the source list at the position sourceIndex
      * in the target list beginning at the targetIndex position for the defined relation.
