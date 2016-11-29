@@ -43,7 +43,7 @@ import java.util.List;
  */
 public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAsyncMappingFilter {
 
-    private static Logger log = LoggerFactory.getLogger(SPSMMappingFilter.class);
+    private static final Logger log = LoggerFactory.getLogger(SPSMMappingFilter.class);
 
     public SPSMMappingFilter(IMappingFactory mappingFactory) {
         super(mappingFactory);
