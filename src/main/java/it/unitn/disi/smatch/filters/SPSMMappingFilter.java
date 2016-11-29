@@ -109,7 +109,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param mapping mapping
      * @return similarity score
      */
-    private double computeSimilarity(IContextMapping<INode> mapping) {
+    protected double computeSimilarity(IContextMapping<INode> mapping) {
         MatchedTreeNodeComparator mntc = new MatchedTreeNodeComparator(mapping);
         TreeEditDistance tde = new TreeEditDistance(mapping.getSourceContext(), mapping.getTargetContext(), mntc, new WorstCaseDistanceConversion());
 
@@ -129,7 +129,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param sourceIndex      list used for reordering of siblings
      * @param targetIndex      list used for reordering of siblings
      */
-    private void filterMappingsOfChildren(INode sourceParent, INode targetParent, char semanticRelation,
+    protected void filterMappingsOfChildren(INode sourceParent, INode targetParent, char semanticRelation,
                                           List<Integer> sourceIndex, List<Integer> targetIndex,
                                           IContextMapping<INode> mapping,
                                           IContextMapping<INode> spsmMapping) {
@@ -164,7 +164,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param targetIndex      list used for reordering of siblings
      * @param mapping          original mapping
      */
-    private void filterMappingsOfSiblingsByRelation(List<INode> source, List<INode> target, char semanticRelation,
+    protected void filterMappingsOfSiblingsByRelation(List<INode> source, List<INode> target, char semanticRelation,
                                                     List<Integer> sourceIndex, List<Integer> targetIndex,
                                                     IContextMapping<INode> mapping,
                                                     IContextMapping<INode> spsmMapping) {
@@ -228,7 +228,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param source      index of the source element to be swapped.
      * @param target      index of the target element to be swapped.
      */
-    private void swapINodes(List<INode> listOfNodes, int source, int target) {
+    protected void swapINodes(List<INode> listOfNodes, int source, int target) {
         INode aux = listOfNodes.get(source);
         listOfNodes.set(source, listOfNodes.get(target));
         listOfNodes.set(target, aux);
@@ -246,7 +246,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param targetIndex list used for reordering of siblings
      * @return the index of the related element in target, or -1 if there is no relate element.
      */
-    private int getRelatedIndex(List<INode> source, List<INode> target, char relation,
+    protected int getRelatedIndex(List<INode> source, List<INode> target, char relation,
                                 List<Integer> sourceIndex, List<Integer> targetIndex,
                                 IContextMapping<INode> mapping,
                                 IContextMapping<INode> spsmMapping) {
@@ -279,7 +279,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param array array list of integers.
      * @param index index of the element to be incremented.
      */
-    private void inc(List<Integer> array, int index) {
+    protected void inc(List<Integer> array, int index) {
         array.set(index, array.get(index) + 1);
     }
 
@@ -292,7 +292,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param defaultMapping original mapping
      * @return true if the relation holds between source and target, false otherwise.
      */
-    private boolean isRelated(final INode source, final INode target, final char relation, IContextMapping<INode> defaultMapping) {
+    protected boolean isRelated(final INode source, final INode target, final char relation, IContextMapping<INode> defaultMapping) {
         return relation == defaultMapping.getRelation(source, target);
     }
 
@@ -303,7 +303,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param source source node
      * @param target target node
      */
-    private void setStrongestMapping(INode source, INode target,
+    protected void setStrongestMapping(INode source, INode target,
                                      IContextMapping<INode> mapping,
                                      IContextMapping<INode> spsmMapping
     ) {
@@ -340,7 +340,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      *
      * @param source INode to look for the strongest relation.
      */
-    private void computeStrongestMappingForSource(INode source,
+    protected void computeStrongestMappingForSource(INode source,
                                                   IContextMapping<INode> mapping,
                                                   IContextMapping<INode> spsmMapping
     ) {
@@ -416,7 +416,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param source    the node for which more than one strongest relation is found
      * @param strongest the list of the strongest relations.
      */
-    private void resolveStrongestMappingConflicts(INode source,
+    protected void resolveStrongestMappingConflicts(INode source,
                                                   List<IMappingElement<INode>> strongest,
                                                   IContextMapping<INode> mapping,
                                                   IContextMapping<INode> spsmMapping
@@ -464,7 +464,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      *
      * @param e the strongest mapping element.
      */
-    private void deleteRemainingRelationsFromMatrix(IMappingElement<INode> e,
+    protected void deleteRemainingRelationsFromMatrix(IMappingElement<INode> e,
                                                     IContextMapping<INode> mapping) {
         //deletes all the relations in the column
         for (Iterator<INode> sourceNodes = mapping.getSourceContext().nodeIterator(); sourceNodes.hasNext(); ) {
@@ -492,7 +492,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param target target node.
      * @return true if they are the same structure, false otherwise.
      */
-    private boolean isSameStructure(INode source, INode target) {
+    protected boolean isSameStructure(INode source, INode target) {
         boolean result = false;
         if (null != source && null != target) {
             if (source.getChildren() != null && target.getChildren() != null) {
@@ -519,7 +519,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param target target node
      * @return true if exists stronger relation in the same column, false otherwise.
      */
-    private boolean existsStrongerInColumn(INode source, INode target,
+    protected boolean existsStrongerInColumn(INode source, INode target,
                                            IContextMapping<INode> mapping) {
         boolean result = false;
 
@@ -547,7 +547,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param target target relation.
      * @return true if source is more precedent than target, false otherwise.
      */
-    private boolean isPrecedent(char source, char target) {
+    protected boolean isPrecedent(char source, char target) {
         return comparePrecedence(source, target) == 1;
     }
 
@@ -564,7 +564,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * 0 if sourceRelation is equally precedent than targetRelation,
      * 1 if sourceRelation  is more precedent than targetRelation.
      */
-    private int comparePrecedence(char sourceRelation, char targetRelation) {
+    protected int comparePrecedence(char sourceRelation, char targetRelation) {
         int result;
 
         int sourcePrecedence = getPrecedenceNumber(sourceRelation);
@@ -593,7 +593,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @return the order of precedence for the given relation, Integer.MAX_VALUE if the relation
      * is not recognized.
      */
-    private int getPrecedenceNumber(char semanticRelation) {
+    protected int getPrecedenceNumber(char semanticRelation) {
 
         //initializes the precedence number to the least precedent
         int precedence = Integer.MAX_VALUE;
