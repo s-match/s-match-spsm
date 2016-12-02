@@ -153,11 +153,11 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      *
      * @param sourceParent     Source node.
      * @param targetParent     Target node.
-     * @param rscParent        Node of the reordered source context.
-     * @param rtcParent        Node of the reordered target context.
+     * @param reorderedSourceParent        Node of the reordered source context.
+     * @param reorderedTargetParent        Node of the reordered target context.
      * @param sourceIndex      list used for reordering of siblings
      * @param targetIndex      list used for reordering of siblings
-     * @param mapping          the original SMATCH mappings
+     * @param mapping          the original S-Match mappings
      *                         to the reordered trees
      * @param unorderedMapping a copy of the original mappings used with
      *                         the reordered trees
@@ -165,7 +165,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param unorderedSpsmMapping  SPSM-filtered unordered mappings are collected here
      */
     protected void filterMappingsOfChildren(INode sourceParent, INode targetParent, 
-                                          INode rscParent, INode rtcParent,
+                                          INode reorderedSourceParent, INode reorderedTargetParent,
                                           List<Integer> sourceIndex, List<Integer> targetIndex,
                                           IContextMapping<INode> mapping,
                                           IContextMapping<INode> unorderedMapping,
@@ -180,7 +180,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
         if (sourceChildren.size() >= 1 && targetChildren.size() >= 1) {
             //sorts the siblings first with the strongest relation, and then with the others
             filterMappingsOfSiblings(sourceChildren, targetChildren,
-                    rscParent.getChildren(), rtcParent.getChildren(),
+                    reorderedSourceParent.getChildren(), reorderedTargetParent.getChildren(),
                     sourceIndex, targetIndex, mapping, unorderedMapping, 
                     spsmMapping, unorderedSpsmMapping);
         }
@@ -189,10 +189,10 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
         targetIndex.remove(targetParent.ancestorCount());
     }
 
-    protected Map<INode,INode> copyTree(INode from, INode to) {
+    protected Map<INode, INode> copyTree(INode from, INode to) {
         // Copy all source and all target children into the reordered source (rsc)
         // and reordered target (rtc) contexts (trees), respectively
-        Map<INode,INode> copyMap = new HashMap<>();
+        Map<INode, INode> copyMap = new HashMap<>();
         copyNode(from, to);
         copyMap.put(from, to);
         
@@ -223,8 +223,8 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      *
      * @param source           Source list of siblings.
      * @param target           Target list of siblings.
-     * @param rscList          List of source siblings to be reordered.
-     * @param rtcList          List of target siblings to be reordered.
+     * @param reorderedSource          List of source siblings to be reordered.
+     * @param reorderedTarget          List of target siblings to be reordered.
      * @param sourceIndex      list used for reordering of siblings
      * @param targetIndex      list used for reordering of siblings
      * @param mapping          original mapping
@@ -234,8 +234,8 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @param unorderedSpsmMapping  SPSM-filtered unordered mappings are collected here
      */
     protected void filterMappingsOfSiblings(List<INode> source, List<INode> target, 
-                                            List<INode> rscList,
-                                            List<INode> rtcList,
+                                            List<INode> reorderedSource,
+                                            List<INode> reorderedTarget,
                                             List<Integer> sourceIndex, List<Integer> targetIndex,
                                             IContextMapping<INode> mapping,
                                             IContextMapping<INode> unorderedMapping,
@@ -261,8 +261,8 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                             target.get(targetIndex.get(targetDepth)),
                             mapping, spsmMapping);
                     
-                    setStrongestMapping(rscList.get(sourceIndex.get(sourceDepth)),
-                            rtcList.get(targetIndex.get(targetDepth)),
+                    setStrongestMapping(reorderedSource.get(sourceIndex.get(sourceDepth)),
+                            reorderedTarget.get(targetIndex.get(targetDepth)),
                             unorderedMapping, unorderedSpsmMapping);
                     
                     // Sort the children of the matched node
@@ -272,8 +272,8 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                     // but it ignores a lot of mappings.
                     filterMappingsOfChildren(source.get(sourceIndex.get(sourceDepth)),
                             target.get(targetIndex.get(targetDepth)), 
-                            rscList.get(sourceIndex.get(sourceDepth)),
-                            rtcList.get(targetIndex.get(targetDepth)),
+                            reorderedSource.get(sourceIndex.get(sourceDepth)),
+                            reorderedTarget.get(targetIndex.get(targetDepth)),
                             sourceIndex, targetIndex, 
                             mapping, unorderedMapping,
                             spsmMapping, unorderedSpsmMapping);
@@ -284,21 +284,21 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                 } else {
                     //look for the next related node in the target
                     int relatedIndex = getRelatedIndex(source, target, 
-                            rscList, rtcList, semanticRelation,
+                            reorderedSource, reorderedTarget, semanticRelation,
                             sourceIndex, targetIndex, mapping, unorderedMapping, 
                             spsmMapping, unorderedSpsmMapping);
                     if (relatedIndex > sourceIndex.get(sourceDepth)) {
                         //there is a related node, but further between the siblings
                         //they should be swapped
                         swapINodes(target, targetIndex.get(targetDepth), relatedIndex);
-                        swapUnmodifiableINodes(rtcList, targetIndex.get(targetDepth), relatedIndex);
+                        swapUnmodifiableINodes(reorderedTarget, targetIndex.get(targetDepth), relatedIndex);
 
                         //filter the mappings of the children of the matched node
                         // TODO: the same assumption is made here as above
                         filterMappingsOfChildren(source.get(sourceIndex.get(sourceDepth)),
                                 target.get(targetIndex.get(targetDepth)),
-                                rscList.get(targetIndex.get(targetDepth)),
-                                rtcList.get(targetIndex.get(targetDepth)),
+                                reorderedSource.get(targetIndex.get(targetDepth)),
+                                reorderedTarget.get(targetIndex.get(targetDepth)),
                                 sourceIndex, targetIndex, 
                                 mapping, unorderedMapping,
                                 spsmMapping, unorderedSpsmMapping);
@@ -311,7 +311,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                         //there is no related item among the remaining siblings
                         //swap this element of source with the last, and decrement the sourceSize
                         swapINodes(source, sourceIndex.get(sourceDepth), (sourceSize - 1));
-                        swapUnmodifiableINodes(rscList, sourceIndex.get(sourceDepth), (sourceSize - 1));
+                        swapUnmodifiableINodes(reorderedSource, sourceIndex.get(sourceDepth), (sourceSize - 1));
                         // TODO: here the choice is made to filter out any mappings
                         // of the children of this node. This means that this SPSM
                         // implementation adds a constraint on parents needing
@@ -324,7 +324,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                         // B
                         //    A
                         //       C
-                        // then, even though SMATCH returns equivalence for the
+                        // then, even though S-Match returns equivalence for the
                         // second and third levels, SPSM eliminates these matches
                         // because A and B do not match on the root level.
                         // It should be reviewed whether this behaviour is intended.
@@ -361,7 +361,6 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @since 2.0.0
      */
     protected void swapUnmodifiableINodes(List<INode> listOfNodes, int source, int target) {
-
         int lowerIndex;
         int higherIndex;
         
@@ -388,8 +387,8 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      *
      * @param source      source list of siblings
      * @param target      target list of siblings
-     * @param rscList     source list of reordered siblings
-     * @param rtcList     target list of reordered siblings
+     * @param reorderedSource     source list of reordered siblings
+     * @param reorderedTarget     target list of reordered siblings
      * @param relation    relation
      * @param sourceIndex list used for reordering of siblings
      * @param targetIndex list used for reordering of siblings
@@ -401,7 +400,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
      * @return the index of the related element in target, or -1 if there is no relate element.
      */
     protected int getRelatedIndex(List<INode> source, List<INode> target, 
-                                List<INode> rscList, List<INode> rtcList,
+                                List<INode> reorderedSource, List<INode> reorderedTarget,
                                 char relation,
                                 List<Integer> sourceIndex, List<Integer> targetIndex,
                                 IContextMapping<INode> mapping,
@@ -414,12 +413,12 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
         int returnIndex = -1;
 
         INode sourceNode = source.get(srcIndex);
-        INode rsNode = rscList.get(srcIndex);
+        INode rsNode = reorderedSource.get(srcIndex);
 
         //find the first one who is related in the same level
         for (int i = tgtIndex + 1; i < target.size(); i++) {
             INode targetNode = target.get(i);
-            INode rtNode = rtcList.get(i);
+            INode rtNode = reorderedTarget.get(i);
             if (isRelated(sourceNode, targetNode, relation, mapping)) {
                 setStrongestMapping(sourceNode, targetNode, mapping, spsmMapping);
                 setStrongestMapping(rsNode, rtNode, unorderedMapping, unorderedSpsmMapping);
@@ -431,7 +430,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
         //there was no correspondence between siblings in source and target lists
         //try to clean the mapping elements
         computeStrongestMappingForSource(source.get(srcIndex), mapping, spsmMapping);
-        computeStrongestMappingForSource(rscList.get(srcIndex), unorderedMapping, 
+        computeStrongestMappingForSource(reorderedSource.get(srcIndex), unorderedMapping, 
                 unorderedSpsmMapping);
 
         return returnIndex;
