@@ -109,11 +109,14 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                         mapping, unorderedMapping,
                         spsmMapping, unorderedSpsmMapping);
             }
-
-            unorderedMapping.setSimilarity(computeSimilarity(unorderedSpsmMapping));
+           
+            double unorderedSimilarity = computeSimilarity(unorderedSpsmMapping);
             double orderedSimilarity = computeSimilarity(spsmMapping);
+            unorderedMapping.setSimilarity(unorderedSimilarity);
+            unorderedSpsmMapping.setSimilarity(unorderedSimilarity);
             log.info("Similarity: " + unorderedMapping.getSimilarity());
             log.info("Ordered similarity: " + orderedSimilarity);
+            
 
             return unorderedSpsmMapping;
         }
@@ -251,8 +254,10 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
         int sourceSize = source.size();
         int targetSize = target.size();
 
-        for (char semanticRelation : relationList) {
-            while (sourceIndex.get(sourceDepth) < sourceSize && targetIndex.get(targetDepth) < targetSize) {
+        
+        while (sourceIndex.get(sourceDepth) < sourceSize && targetIndex.get(targetDepth) < targetSize) {
+            boolean foundRelated = false;
+            for (char semanticRelation : relationList) {
                 if (isRelated(source.get(sourceIndex.get(sourceDepth)),
                         target.get(targetIndex.get(targetDepth)),
                         semanticRelation, mapping)) {
@@ -281,6 +286,8 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                     //increment the index
                     inc(sourceIndex, sourceDepth);
                     inc(targetIndex, targetDepth);
+                    foundRelated = true;
+                    break;
                 } else {
                     //look for the next related node in the target
                     int relatedIndex = getRelatedIndex(source, target, 
@@ -306,31 +313,34 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                         //increment the index
                         inc(sourceIndex, sourceDepth);
                         inc(targetIndex, targetDepth);
+                        foundRelated = true;
+                        break;
 
-                    } else {
-                        //there is no related item among the remaining siblings
-                        //swap this element of source with the last, and decrement the sourceSize
-                        swapINodes(source, sourceIndex.get(sourceDepth), (sourceSize - 1));
-                        swapUnmodifiableINodes(reorderedSource, sourceIndex.get(sourceDepth), (sourceSize - 1));
-                        // TODO: here the choice is made to filter out any mappings
-                        // of the children of this node. This means that this SPSM
-                        // implementation adds a constraint on parents needing
-                        // to be mapped in order to consider their children. So if
-                        // the source tree is:
-                        // A
-                        //    B
-                        //       C
-                        // and the target tree is
-                        // B
-                        //    A
-                        //       C
-                        // then, even though S-Match returns equivalence for the
-                        // second and third levels, SPSM eliminates these matches
-                        // because A and B do not match on the root level.
-                        // It should be reviewed whether this behaviour is intended.
-                        sourceSize--;
                     }
                 }
+            }
+            if (!foundRelated) {
+                //there is no related item among the remaining siblings
+                //swap this element of source with the last, and decrement the sourceSize
+                swapINodes(source, sourceIndex.get(sourceDepth), (sourceSize - 1));
+                swapINodes(reorderedSource, sourceIndex.get(sourceDepth), (sourceSize - 1));
+                // TODO: here the choice is made to filter out any mappings
+                // of the children of this node. This means that this SPSM
+                // implementation adds a constraint on parents needing
+                // to be mapped in order to consider their children. So if
+                // the source tree is:
+                // A
+                //    B
+                //       C
+                // and the target tree is
+                // B
+                //    A
+                //       C
+                // then, even though SMATCH returns equivalence for the
+                // second and third levels, SPSM eliminates these matches
+                // because A and B do not match on the root level.
+                // It should be reviewed whether this behaviour is intended.
+                sourceSize--;
             }
         }
     }
