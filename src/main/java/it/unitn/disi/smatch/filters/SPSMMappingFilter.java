@@ -323,7 +323,7 @@ public class SPSMMappingFilter extends BaseFilter implements IMappingFilter, IAs
                 //there is no related item among the remaining siblings
                 //swap this element of source with the last, and decrement the sourceSize
                 swapINodes(source, sourceIndex.get(sourceDepth), (sourceSize - 1));
-                swapINodes(reorderedSource, sourceIndex.get(sourceDepth), (sourceSize - 1));
+                swapUnmodifiableINodes(reorderedSource, sourceIndex.get(sourceDepth), (sourceSize - 1));
                 // TODO: here the choice is made to filter out any mappings
                 // of the children of this node. This means that this SPSM
                 // implementation adds a constraint on parents needing
